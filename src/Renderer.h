@@ -4,7 +4,7 @@ namespace Renderer
 {
 //////////////////////////////////////////////////////////////////////////
 
-enum WINDOWMODE 
+enum WINDOWMODE
 {
   WINDOWMODE_WINDOWED = 0,
   WINDOWMODE_FULLSCREEN,
@@ -13,8 +13,12 @@ enum WINDOWMODE
 
 struct Settings
 {
+  int nRealWidth;
+  int nRealHeight;
   int nWidth;
   int nHeight;
+  float fScale;
+  bool bLinearFilter;
   WINDOWMODE windowMode;
   bool bVsync;
 };

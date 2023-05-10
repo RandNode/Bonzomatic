@@ -170,6 +170,8 @@ GLFWwindow * mWindow = NULL;
 bool run = true;
 
 GLuint theShader = 0;
+GLuint glhShaderFB = 0;
+GLuint glhShaderTex = 0;
 GLuint glhVertexShader = 0;
 GLuint glhFullscreenQuadVB = 0;
 GLuint glhFullscreenQuadVA = 0;
@@ -179,6 +181,11 @@ GLuint glhGUIProgram = 0;
 
 int nWidth = 0;
 int nHeight = 0;
+float fScale = 1.0f;
+bool bLinearFilter = false;
+
+int nRealWindowWidth = 0;
+int nRealWindowHeight = 0;
 
 void MatrixOrthoOffCenterLH( float * pout, float l, float r, float b, float t, float zn, float zf )
 {
@@ -196,9 +203,9 @@ int readIndex = 0;
 int writeIndex = 1;
 GLuint pbo[ 2 ];
 
-static void error_callback( int error, const char * description ) 
+static void error_callback( int error, const char * description )
 {
-  switch ( error ) 
+  switch ( error )
   {
     case GLFW_API_UNAVAILABLE:
       printf( "OpenGL is unavailable: " );
@@ -231,8 +238,10 @@ bool Open( Renderer::Settings * settings )
   }
   printf( "[GLFW] Version String: %s\n", glfwGetVersionString() );
 
-  nWidth = settings->nWidth;
-  nHeight = settings->nHeight;
+  nWidth = nRealWindowWidth = settings->nRealWidth = settings->nWidth;
+  nHeight = nRealWindowHeight = settings->nRealHeight = settings->nHeight;
+  fScale = settings->fScale;
+  bLinearFilter = settings->bLinearFilter;
 
   glfwWindowHint( GLFW_RED_BITS, 8 );
   glfwWindowHint( GLFW_GREEN_BITS, 8 );
@@ -249,7 +258,7 @@ bool Open( Renderer::Settings * settings )
   glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 
 #ifdef __APPLE__
-  glfwWindowHint( GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE );
+  glfwWindowHint( GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_TRUE );
   glfwWindowHint( GLFW_COCOA_GRAPHICS_SWITCHING, GLFW_FALSE );
 #endif
 
@@ -312,6 +321,20 @@ bool Open( Renderer::Settings * settings )
   nWidth = settings->nWidth = fbWidth;
   nHeight = settings->nHeight = fbHeight;
   printf( "[GLFW] Obtained framebuffer size: %d x %d\n", fbWidth, fbHeight );
+
+  if (fScale != 1.0f) {
+    glGenTextures( 1, &glhShaderTex );
+    glBindTexture( GL_TEXTURE_2D, glhShaderTex );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F, nWidth*fScale, nHeight*fScale, 0, GL_RGBA, GL_FLOAT, NULL );
+    glBindTexture( GL_TEXTURE_2D, 0 );
+
+    glGenFramebuffers( 1, &glhShaderFB );
+    glBindFramebuffer( GL_FRAMEBUFFER, glhShaderFB );
+    glFramebufferTexture( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, glhShaderTex, 0 );
+    glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+  }
 
   static float pFullscreenQuadVertices[] =
   {
@@ -442,8 +465,6 @@ bool Open( Renderer::Settings * settings )
   //unbind buffers for now
   glBindBuffer( GL_PIXEL_PACK_BUFFER, 0 );
 
-  glViewport( 0, 0, nWidth, nHeight );
-
   run = true;
 
   return true;
@@ -455,15 +476,15 @@ MouseEvent mouseEventBuffer[ 512 ];
 int mouseEventBufferCount = 0;
 void key_callback( GLFWwindow * window, int key, int scancode, int action, int mods )
 {
-  if ( action == GLFW_PRESS || action == GLFW_REPEAT ) 
+  if ( action == GLFW_PRESS || action == GLFW_REPEAT )
   {
-    if ( ( key == GLFW_KEY_F4 && ( mods & GLFW_MOD_ALT ) ) || ( key == GLFW_KEY_ESCAPE && ( mods & GLFW_MOD_SHIFT ) ) ) 
+    if ( ( key == GLFW_KEY_F4 && ( mods & GLFW_MOD_ALT ) ) || ( key == GLFW_KEY_ESCAPE && ( mods & GLFW_MOD_SHIFT ) ) )
     {
       run = false;
     }
     int sciKey = 0;
     bool bNormalKey = false;
-    switch ( key ) 
+    switch ( key )
     {
       case GLFW_KEY_DOWN:         sciKey = SCK_DOWN;      break;
       case GLFW_KEY_UP:           sciKey = SCK_UP;        break;
@@ -515,7 +536,7 @@ void key_callback( GLFWwindow * window, int key, int scancode, int action, int m
       default:
         bNormalKey = true;
         // TODO: Horrible hack to migrate from GLFW (that uses ascii maj for keys) to scintilla min keys
-        if ( ( key >= GLFW_KEY_A ) && ( key <= GLFW_KEY_Z ) ) 
+        if ( ( key >= GLFW_KEY_A ) && ( key <= GLFW_KEY_Z ) )
         {
           sciKey = key + 32;
         }
@@ -549,26 +570,28 @@ void character_callback( GLFWwindow * window, unsigned int codepoint )
 void cursor_position_callback( GLFWwindow * window, double xpos, double ypos )
 {
   mouseEventBuffer[ mouseEventBufferCount ].eventType = MOUSEEVENTTYPE_MOVE;
-  mouseEventBuffer[ mouseEventBufferCount ].x = (float)xpos;
-  mouseEventBuffer[ mouseEventBufferCount ].y = (float)ypos;
+  mouseEventBuffer[ mouseEventBufferCount ].x = ((float)xpos / (float)nRealWindowWidth) * nWidth;
+  mouseEventBuffer[ mouseEventBufferCount ].y = ((float)ypos / (float)nRealWindowHeight) * nHeight;
+  //printf( "[GLFW] Obtained cursor_position callback: %f - %f\n", (float)xpos, (float)ypos );
+  //printf( "[GLFW] Calculated cursor_position callback: %f - %f\n", (float)mouseEventBuffer[ mouseEventBufferCount ].x, (float)mouseEventBuffer[ mouseEventBufferCount ].y );
   if ( glfwGetMouseButton( window, GLFW_MOUSE_BUTTON_LEFT ) == GLFW_PRESS ) mouseEventBuffer[ mouseEventBufferCount ].button = MOUSEBUTTON_LEFT;
   mouseEventBufferCount++;
 }
 
 void mouse_button_callback( GLFWwindow * window, int button, int action, int mods )
 {
-  if ( action == GLFW_PRESS ) 
+  if ( action == GLFW_PRESS )
   {
     mouseEventBuffer[ mouseEventBufferCount ].eventType = MOUSEEVENTTYPE_DOWN;
   }
-  else if ( action == GLFW_RELEASE ) 
+  else if ( action == GLFW_RELEASE )
   {
     mouseEventBuffer[ mouseEventBufferCount ].eventType = MOUSEEVENTTYPE_UP;
   }
   double xpos, ypos;
   glfwGetCursorPos( window, &xpos, &ypos );
-  mouseEventBuffer[ mouseEventBufferCount ].x = (float)xpos;
-  mouseEventBuffer[ mouseEventBufferCount ].y = (float)ypos;
+  mouseEventBuffer[ mouseEventBufferCount ].x = ((float)xpos / (float)nRealWindowWidth) * nWidth;
+  mouseEventBuffer[ mouseEventBufferCount ].y = ((float)ypos / (float)nRealWindowHeight) * nHeight;
   switch ( button )
   {
     case GLFW_MOUSE_BUTTON_MIDDLE: mouseEventBuffer[ mouseEventBufferCount ].button = MOUSEBUTTON_MIDDLE; break;
@@ -613,6 +636,10 @@ void RenderFullscreenQuad()
 {
   glBindVertexArray( glhFullscreenQuadVA );
 
+  if (fScale != 1.0f) {
+    glBindFramebuffer(GL_FRAMEBUFFER, glhShaderFB);
+  }
+
   glUseProgram( theShader );
 
   glBindBuffer( GL_ARRAY_BUFFER, glhFullscreenQuadVB );
@@ -641,6 +668,13 @@ void RenderFullscreenQuad()
     glDisableVertexAttribArray( position );
 
   glUseProgram( 0 );
+
+  if (fScale != 1.0f) {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, glhShaderFB);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBlitFramebuffer(0, 0, nWidth*fScale, nHeight*fScale, 0, 0, nWidth, nHeight, GL_COLOR_BUFFER_BIT, bLinearFilter ? GL_LINEAR : GL_NEAREST);
+  }
 }
 
 bool ReloadShader( const char * szShaderCode, int nShaderCodeSize, char * szErrorBuffer, int nErrorBufferSize )

@@ -114,6 +114,8 @@ int main( int argc, const char * argv[] )
       settings.sFFT.bUseRecordingDevice = options.get<jsonxx::Object>( "audio" ).get<jsonxx::Boolean>( "useInput" );
   }
 
+  settings.sRenderer.fScale = 1.0f;
+  settings.sRenderer.bLinearFilter = false;
   settings.sRenderer.bVsync = false;
 #ifdef _DEBUG
   settings.sRenderer.nWidth = 1280;
@@ -130,9 +132,15 @@ int main( int argc, const char * argv[] )
       settings.sRenderer.nWidth = options.get<jsonxx::Object>( "window" ).get<jsonxx::Number>( "width" );
     if ( options.get<jsonxx::Object>( "window" ).has<jsonxx::Number>( "height" ) )
       settings.sRenderer.nHeight = options.get<jsonxx::Object>( "window" ).get<jsonxx::Number>( "height" );
+    if (options.get<jsonxx::Object>("window").has<jsonxx::Number>("scale"))
+      settings.sRenderer.fScale = options.get<jsonxx::Object>("window").get<jsonxx::Number>("scale");
+    if (options.get<jsonxx::Object>("window").has<jsonxx::Boolean>("linearFilter"))
+      settings.sRenderer.bLinearFilter = options.get<jsonxx::Object>("window").get<jsonxx::Boolean>("linearFilter");
     if ( options.get<jsonxx::Object>( "window" ).has<jsonxx::Boolean>( "fullscreen" ) )
       settings.sRenderer.windowMode = options.get<jsonxx::Object>( "window" ).get<jsonxx::Boolean>( "fullscreen" ) ? Renderer::WINDOWMODE_FULLSCREEN : Renderer::WINDOWMODE_WINDOWED;
   }
+  if (settings.sRenderer.fScale < 0.0f) settings.sRenderer.fScale = 0.0f;
+  if (settings.sRenderer.fScale > 1.0f) settings.sRenderer.fScale = 1.0f;
   if ( !skipSetupDialog )
   {
     if ( !SetupDialog::Open( &settings ) )
@@ -484,7 +492,7 @@ int main( int argc, const char * argv[] )
         mShaderEditor.SetOpacity( mShaderEditor.GetOpacity() + 10 );
         mDebugOutput.SetOpacity( mDebugOutput.GetOpacity() + 10 );
       }
-      else if ( Renderer::keyEventBuffer[ i ].scanCode == FKEY( 11 ) || ( Renderer::keyEventBuffer[ i ].ctrl && Renderer::keyEventBuffer[ i ].scanCode == 'f' ) ) // F11 or Ctrl/Cmd-f  
+      else if ( Renderer::keyEventBuffer[ i ].scanCode == FKEY( 11 ) || ( Renderer::keyEventBuffer[ i ].ctrl && Renderer::keyEventBuffer[ i ].scanCode == 'f' ) ) // F11 or Ctrl/Cmd-f
       {
         bShowGui = !bShowGui;
       }
@@ -513,7 +521,7 @@ int main( int argc, const char * argv[] )
     Renderer::keyEventBufferCount = 0;
 
     Renderer::SetShaderConstant( "fGlobalTime", time );
-    Renderer::SetShaderConstant( "v2Resolution", settings.sRenderer.nWidth, settings.sRenderer.nHeight );
+    Renderer::SetShaderConstant( "v2Resolution", settings.sRenderer.nWidth*settings.sRenderer.fScale, settings.sRenderer.nHeight*settings.sRenderer.fScale );
 
     float fTime = Timer::GetTime();
     Renderer::SetShaderConstant( "fFrameTime", ( fTime - fLastTimeMS ) / 1000.0f );
@@ -536,7 +544,7 @@ int main( int argc, const char * argv[] )
 
         fftDataSlightlySmoothed[ i ] = fftDataSlightlySmoothed[ i ] * fFFTSlightSmoothingFactor + ( 1 - fFFTSlightSmoothingFactor ) * fftData[ i ];
         fftDataIntegrated[ i ] = fftDataIntegrated[ i ] + fftDataSlightlySmoothed[ i ];
-        if ( fftDataIntegrated[ i ] > maxIntegralValue ) 
+        if ( fftDataIntegrated[ i ] > maxIntegralValue )
         {
           fftDataIntegrated[ i ] -= maxIntegralValue;
         }

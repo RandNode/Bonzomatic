@@ -1,8 +1,6 @@
-# Bonzomatic
+# Bonzomatic RETINA
 
-[![Github workflow status](https://github.com/Gargaj/Bonzomatic/actions/workflows/main.yml/badge.svg)](https://github.com/Gargaj/Bonzomatic/actions/workflows/main.yml)
-[![Appveyor build status](https://ci.appveyor.com/api/projects/status/ix6fwi6nym1tu4e7?svg=true)](https://ci.appveyor.com/project/Gargaj/bonzomatic)
-[![Travis build status](https://img.shields.io/travis/Gargaj/Bonzomatic?logo=travis)](https://travis-ci.org/Gargaj/Bonzomatic)
+Modified for Macs with HiDPI settings.
 
 ## What's this?
 This is a live-coding tool, where you can write a 2D fragment/pixel shader while it is running in the background.
@@ -36,33 +34,38 @@ The file can have the following contents: (all fields are optional)
 {
   "skipSetupDialog": true, // If true, setup dialog will be suppressed - all values you provide below will be used without validation (at your own risk!)
   "window":{ // default window size / state; if there's a setup dialog, it will override it
-    "width":1920,
-    "height":1080,
-    "fullscreen":true,
+    "width":1450,
+    "height":850,
+    "scale":0.5,
+    "linearFilter":true,
+    "fullscreen":false,
   },
   "audio":{ // default audio device settings; if there's a setup dialog, it will override it
-    "useInput":false, // if true, use line-in/mic/...; if false, attempt to create a loopback device and use stereo out
+    "useInput":true, // if true, use line-in/mic/...; if false, attempt to create a loopback device and use stereo out
   },
   "font":{ // all paths in the file are also relative to the binary, but again, can be absolute paths if that's more convenient
-    "file":"Input-Regular_(InputMono-Medium).ttf",
-    "size":16,
+    "file":"ProFontWindows.ttf",
+    "size":30,
   },
   "rendering":{
-    "fftSmoothFactor": 0.9, // 0.0 means there's no smoothing at all, 1.0 means the FFT is completely smoothed flat
+    "fftSmoothFactor": 0.0, // 0.0 means there's no smoothing at all, 1.0 means the FFT is completely smoothed flat
     "fftAmplification": 1.0, // 1.0 means no change, larger values will result in brighter/stronger bands, smaller values in darker/weaker ones
   },
   "textures":{ // the keys below will become the shader variable names
     "texChecker":"textures/checker.png",
     "texNoise":"textures/noise.png",
     "texTex1":"textures/tex1.jpg",
+    "texTex2":"textures/tex2.jpg",
+    "texTex3":"textures/tex3.jpg",
+    "texTex4":"textures/tex4.jpg",
   },
   "gui":{
     "outputHeight": 200,
-    "opacity": 192, // 255 means the editor occludes the effect completely, 0 means the editor is fully transparent
-    "texturePreviewWidth": 64,
+    "opacity": 220, // 255 means the editor occludes the effect completely, 0 means the editor is fully transparent
+    "texturePreviewWidth": 200,
     "spacesForTabs": false,
-    "tabSize": 8,
-    "visibleWhitespace": true,
+    "tabSize": 4,
+    "visibleWhitespace": false,
     "autoIndent": "smart", // can be "none", "preserve" or "smart"
     "scrollXFactor": 1.0, // if horizontal scrolling is too slow you can speed it up here (or change direction)
     "scrollYFactor": 1.0, // if vertical scrolling is too slow you can speed it up here (or change direction)
@@ -89,9 +92,9 @@ The file can have the following contents: (all fields are optional)
     "builtin": "44FF88",
     "preprocessor": "C0C0C0",
     "selection": "C06699CC", // background color when selecting text
-    "charBackground": "C0000000", // if set, this value will be used (instead of gui opacity) behind characters
+    //"charBackground": "C0000000", // if set, this value will be used (instead of gui opacity) behind characters
   },
-  "postExitCmd":"copy_to_dropbox.bat" // this command gets ran when you quit Bonzomatic, and the shader filename gets passed to it as first parameter. Use this to take regular backups.
+  //"postExitCmd":"copy_to_dropbox.bat" // this command gets ran when you quit Bonzomatic, and the shader filename gets passed to it as first parameter. Use this to take regular backups.
 }
 ```
 ### Automatic shader backup
